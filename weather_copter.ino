@@ -142,38 +142,14 @@ void loop()
     uint8_t nmeaType = gps.CheckSerial();
     if(nmeaType & GGA) //only need GGA for the weather copter
     {
-//      SerialUSB.print("flashing");
-//      SerialUSB.print('\t');
-//      
-//      SerialUSB.print(millis());
-//      SerialUSB.print('\t');
-      //gps string initiates a new record, so first, write the current one
-      //weatherCopter.WriteCurrentDumpToFlash();
-
-//      SerialUSB.print(millis());
-//      SerialUSB.print('\n');
-
-      //weatherCopter.PrintCurrentDump();
-
-      //then start a new record
-      //weatherCopter.CreateRecord();
-
-      //and add the gps and altimeter data
-//      weatherCopter.AddGPSDump(gps.GetReading());
-//      weatherCopter.AddAltDump(altimeter280.MakeDataDump());
-
       //send some basic data to the ground station
       Report(//altimeter3115.MakeShortDataString() + ',' 
                  altimeter280.MakeShortDataString() + ','
                   + trisonica.GetReading().MakeShortDataString());// + '\n');
-//      SerialUSB.print(millis());
-//      SerialUSB.print('\n');
     }
   
     if(trisonica.CheckSerial()) 
     {
-//      SerialUSB.print(millis());
-//      SerialUSB.print(',');
       //trisonica keys a new wind record
       String dataStr =  gps.MakeDataString() + ',' 
                       + trisonica.GetReading().MakeDataString() + ','
@@ -181,13 +157,10 @@ void loop()
                       + imu.CalcRPY().MakeDataString();// + '\n';
 
       weatherCopter.WriteSDBlock(dataStr);
-      //weatherCopter.AddWindAndIMUDump(trisonica.GetReading(), imu.CalcRPY());
     }
 
     if(imu.IsAvailableAccelAndGyro())
     {
-//      SerialUSB.print("imu: ");
-//      SerialUSB.println(millis());
       imu.ProcessReadings();
     }
 
@@ -224,7 +197,6 @@ int ProcessCmdString(String cmdString)
       case 'X':
         mode = READING;
         SerialUSB.println(F("Entering reading mode."));
-        //weatherCopter.CreateRecord();
         weatherCopter.OpenSDBlockFile();
         break;
 
@@ -257,7 +229,6 @@ int ProcessCmdString(String cmdString)
   {
     if(cmd == 'X') 
     {
-      triSerial.print("exit\r\n");
       mode = CMD_MODE;
     }
     
@@ -272,46 +243,9 @@ int ProcessCmdString(String cmdString)
 
   else if(mode == FILE_MODE)
   {
-    //file management options
-    //erase flash, copy to SD, splash to SerialMonitor (for testing)
-
-    //uint8_t storeNumber = -1;
-    String numberStr = cmdString.substring(1);
-    if(cmd == 'X') {}    
-    else if(numberStr.length() >= 1) {}
-      //storeNumber = numberStr.toInt();
-    else
+    if(cmd == 'X') 
     {
-      SerialUSB.println(F("Invalid command string (01)."));
-      return 0;
-    }
-
-    switch(cmd)
-    {
-      case 'E':
-//        weatherCopter.EraseStore(storeNumber); //smarter in the future
-//        weatherCopter.ListStores();
-        break;
-      case 'D': //displays file to SerialMonitor
-//        weatherCopter.SplashStore(storeNumber);
-//        weatherCopter.ListStores(false);
-        break;
-      case 'S':
-        //save to file
-//        weatherCopter.SaveStoreToSD(storeNumber); //smarter in the future
-//        weatherCopter.ListStores(false);
-        break;
-      case 'X':
-        SerialUSB.println("Entering command mode.");
-        mode = CMD_MODE;        
-        break;
-//      case 'L':
-//        weatherCopter.ListStores();
-//        break;
-      case 'N':
-//        if(!weatherCopter.CreateStore(storeNumber)) SerialUSB.println("failed");
-//        weatherCopter.ListStores(false);
-        break;
+      mode = CMD_MODE;
     }
   }
 
