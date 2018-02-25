@@ -88,7 +88,7 @@ void setup()
   GPSDatum gpsDatum = gps.GetReading();
   char filename[8];
   sprintf(filename, "%02i%02i", gpsDatum.month, gpsDatum.day);
-  weatherCopter.Init(filename);
+  weatherCopter.Init();
   //weatherCopter.ListStores();
 
   //no longer need RMC
@@ -156,7 +156,7 @@ void loop()
                       + altimeter280.MakeDataString() + ','
                       + imu.CalcRPY().MakeDataString();// + '\n';
 
-      weatherCopter.WriteSDBlock(dataStr);
+      //weatherCopter.WriteSDBlock(dataStr);
     }
 
     if(imu.IsAvailableAccelAndGyro())
@@ -197,12 +197,12 @@ int ProcessCmdString(String cmdString)
       case 'X':
         mode = READING;
         SerialUSB.println(F("Entering reading mode."));
-        weatherCopter.OpenSDBlockFile();
+        //weatherCopter.OpenSDBlockFile();
         break;
 
       case 'N': 
         //new file
-        weatherCopter.CreateSDBlockFile();
+        //weatherCopter.CreateSDBlockFile();
         break;
 
       case 'M': //'M' for iMu
@@ -253,31 +253,9 @@ int ProcessCmdString(String cmdString)
   {
     mode = CMD_MODE;
     SerialUSB.println("Entering command mode");
-    weatherCopter.CloseSDBlockFile();
+    //weatherCopter.CloseSDBlockFile();
   }
 
   return mode;
-}
-
-void IMUTest(void)
-{
-  SerialUSB.println("Testing");
-  imu.InitFIFO(16);
-
-  while(1)
-  {
-    SerialUSB.print(millis());
-    SerialUSB.print('\t');
-    SerialUSB.print(imu.IsAvailableAccelAndGyro());
-    SerialUSB.print('\t');
-    SerialUSB.print(imu.getFIFOSamples());
-    SerialUSB.print('\t');
-    SerialUSB.print(imu.ReadRegister(0x27), HEX);
-    SerialUSB.print('\t');
-    SerialUSB.print(imu.ReadRegister(0x2f), HEX);
-    SerialUSB.print('\n');
-
-    if(imu.ReadRegister(0x2f) & 0x80) imu.ReadFIFO();
-  }
 }
 
