@@ -4,6 +4,8 @@
  * BE SURE TO CONFIRM THE PIN ASSIGNMENTS FOR THE SPI BUS, ETC.!!!!!!
  */
 
+ //Version that uses the AT45 flash chip (or any flash chip, really)
+
 #include <wiring_private.h> //needed for the pinPeripheral() function
 
 #include <weather_copter.h>
@@ -49,7 +51,7 @@ LSM9DS1 imu;
 
 WeatherCopter weatherCopter;
 
-char filename[16]; //12 characters max
+//char filename[16]; //12 characters max
 
 void setup() 
 {
@@ -79,17 +81,15 @@ void setup()
   gps.Init(); //doesn't really init; just sends data rate stuff
 
   Report(F("Checking for signal."));
-  Report(F("Press return at any time to skip file on fix.\n"));
+  Report(F("Press return at any time to skip waiting for fix.\n"));
   while(!(gps.CheckSerial() & RMC) && !SerialUSB.available() && !radio.receiveDone()) 
   {
     trisonica.CheckSerial(); //"purge" the trisonica readings
   }
 
-  GPSDatum gpsDatum = gps.GetReading();
-  char filename[8];
-  sprintf(filename, "%02i%02i", gpsDatum.month, gpsDatum.day);
-  weatherCopter.Init();
-  //weatherCopter.ListStores();
+//  GPSDatum gpsDatum = gps.GetReading();
+//  char filename[8];
+//  sprintf(filename, "%02i%02i", gpsDatum.month, gpsDatum.day);
 
   //no longer need RMC
   gps.SetActiveNMEAStrings(GGA);
@@ -108,6 +108,8 @@ void setup()
 //  SerialUSB.println("Testing");
 //  IMUTest();
 
+  weatherCopter.Init();
+  weatherCopter.ListStores(true);
 
   Report(F("Done."));
 }
@@ -146,17 +148,20 @@ void loop()
       Report(//altimeter3115.MakeShortDataString() + ',' 
                  altimeter280.MakeShortDataString() + ','
                   + trisonica.GetReading().MakeShortDataString());// + '\n');
+      weatherCopter.AddGPSAltDump(gps.GetReading(), altimeter280.GetReading());
     }
   
     if(trisonica.CheckSerial()) 
     {
       //trisonica keys a new wind record
-      String dataStr =  gps.MakeDataString() + ',' 
-                      + trisonica.GetReading().MakeDataString() + ','
-                      + altimeter280.MakeDataString() + ','
-                      + imu.CalcRPY().MakeDataString();// + '\n';
+//      String dataStr =  gps.MakeDataString() + ',' 
+//                      + trisonica.GetReading().MakeDataString() + ','
+//                      + altimeter280.MakeDataString() + ','
+//                      + imu.CalcRPY().MakeDataString();// + '\n';
 
+//      SerialUSB.println(dataStr);
       //weatherCopter.WriteSDBlock(dataStr);
+      weatherCopter.AddWindAndIMUDump(trisonica.GetReading(), imu.CalcRPY());
     }
 
     if(imu.IsAvailableAccelAndGyro())
@@ -178,7 +183,7 @@ void loop()
   }
 }
 
-int ProcessCmdString(String cmdString)
+int ProcessCmdString(const String& cmdString)
 {
   SerialUSB.println(cmdString);
 
@@ -200,11 +205,6 @@ int ProcessCmdString(String cmdString)
         //weatherCopter.OpenSDBlockFile();
         break;
 
-      case 'N': 
-        //new file
-        //weatherCopter.CreateSDBlockFile();
-        break;
-
       case 'M': //'M' for iMu
         //calibrate
         SerialUSB.println(F("Entering calibration mode."));
@@ -220,7 +220,7 @@ int ProcessCmdString(String cmdString)
       case 'F':
         SerialUSB.println(F("Entering file mode."));
         mode = FILE_MODE;
-//        weatherCopter.ListStores();
+        weatherCopter.ListStores();
         break;
     }
   }
@@ -245,9 +245,49 @@ int ProcessCmdString(String cmdString)
   {
     if(cmd == 'X') 
     {
+      SerialUSB.println("Entering command mode");
       mode = CMD_MODE;
     }
-  }
+
+    if(cmd == 'N')
+    {
+      SerialUSB.println(weatherCopter.CreateStore(cmdString.substring(1).toInt()));
+      weatherCopter.ListStores();
+    }
+
+    if(cmd == 'S')
+    {
+      weatherCopter.SplashStore(cmdString.substring(1).toInt());
+    }
+
+    if(cmd == 'L')
+    {
+      weatherCopter.ListStores();
+    }
+
+    if(cmd == 'E')
+    {
+      weatherCopter.EraseStore(cmdString.substring(1).toInt());
+      weatherCopter.ListStores();
+    }
+    
+    if(cmd == 'C')
+    {
+      weatherCopter.CloseStore(cmdString.substring(1).toInt());
+      weatherCopter.ListStores();
+    }
+
+    if(cmd == 'W')
+    {
+      weatherCopter.SaveStoreToSD(cmdString.substring(1).toInt());
+      weatherCopter.ListStores();
+    }
+
+    if(cmd == 'R') //refresh
+    {
+      weatherCopter.ListStores(true);
+    }
+}
 
   else if(cmd == 'C')
   {
