@@ -4,7 +4,7 @@
  * BE SURE TO CONFIRM THE PIN ASSIGNMENTS FOR THE SPI BUS, ETC.!!!!!!
  */
 
- //Version that uses the AT45 flash chip (or any flash chip, really)
+ //Version that uses the AT45 flash chip
 
 #include <wiring_private.h> //needed for the pinPeripheral() function
 
@@ -194,106 +194,100 @@ int ProcessCmdString(const String& cmdString)
   }
 
   char cmd = cmdString[0];
+
+  switch(mode)
+  {
+    case CMD_MODE:
+      switch(cmd)
+      {
+        case 'X':
+          mode = READING;
+          SerialUSB.println(F("Entering reading mode."));
+          //weatherCopter.OpenSDBlockFile();
+          break;
   
-  if(mode == CMD_MODE)
-  {
-    switch(cmd)
-    {
-      case 'X':
-        mode = READING;
-        SerialUSB.println(F("Entering reading mode."));
-        //weatherCopter.OpenSDBlockFile();
-        break;
+        case 'M': //'M' for iMu
+          //calibrate
+          SerialUSB.println(F("Entering calibration mode."));
+          mode = CALIBRATION_MODE;
+          break;
+  
+        case 'T':
+          SerialUSB.println(F("Entering Trisonica mode."));
+          mode = TRISONICA_MODE;
+          triSerial.write(0x03);
+          break;
+  
+        case 'F':
+          SerialUSB.println(F("Entering file mode."));
+          mode = FILE_MODE;
+          weatherCopter.ListStores();
+          break;
+      }
+      break;
 
-      case 'M': //'M' for iMu
-        //calibrate
-        SerialUSB.println(F("Entering calibration mode."));
-        mode = CALIBRATION_MODE;
-        break;
+    case TRISONICA_MODE:
+      if(cmd == 'X') 
+      {
+        mode = CMD_MODE;
+      }
+      else triSerial.write(cmd); 
+      break;
 
-      case 'T':
-        SerialUSB.println(F("Entering Trisonica mode."));
-        mode = TRISONICA_MODE;
-        triSerial.write(0x03);
-        break;
+    case CALIBRATION_MODE:
+      //calibration options
+      //load, save, calibrate, clear, sample, also calibrate altitude
+      //to be done someday
+      break;
 
-      case 'F':
-        SerialUSB.println(F("Entering file mode."));
-        mode = FILE_MODE;
-        weatherCopter.ListStores();
-        break;
-    }
-  }
+    case FILE_MODE:
+      switch(cmd)
+      {
+        case 'X':
+          SerialUSB.println("Entering command mode");
+          mode = CMD_MODE;
+          break;
+        case 'O':
+          weatherCopter.OpenStore(cmdString.substring(1).toInt());
+          weatherCopter.ListStores();
+          break;
+        case 'S': 
+          weatherCopter.SplashStore(cmdString.substring(1).toInt());
+          break;
+        case 'L':
+          weatherCopter.ListStores();
+          break;  
+        case 'E':
+          weatherCopter.EraseStore(cmdString.substring(1).toInt());
+          weatherCopter.ListStores();
+          break;
+        case 'C':
+          weatherCopter.CloseStore();
+          weatherCopter.ListStores();
+          break;
+        case 'W':
+          weatherCopter.SaveStoreToSD(cmdString.substring(1).toInt());
+          weatherCopter.ListStores();
+          break;
+        case 'R':
+          weatherCopter.ListStores(true);
+          break;
+        default:
+          SerialUSB.println("Invalid command");
+      }
+      break; //end FILE_MODE
 
-  else if(mode == TRISONICA_MODE)
-  {
-    if(cmd == 'X') 
-    {
-      mode = CMD_MODE;
-    }
-    
-    else triSerial.write(cmd);    
-  }
+    case READING:
+      if(cmd == 'C')
+      {
+        weatherCopter.CloseStore();
+        mode = CMD_MODE;
+        SerialUSB.println("Entering command mode");
+      }
+      break;
 
-  else if(mode == CALIBRATION_MODE)
-  {
-    //calibration options
-    //load, save, calibrate, clear, sample, also calibrate altitude
-  }
-
-  else if(mode == FILE_MODE)
-  {
-    if(cmd == 'X') 
-    {
-      SerialUSB.println("Entering command mode");
-      mode = CMD_MODE;
-    }
-
-    if(cmd == 'N')
-    {
-      SerialUSB.println(weatherCopter.CreateStore(cmdString.substring(1).toInt()));
-      weatherCopter.ListStores();
-    }
-
-    if(cmd == 'S')
-    {
-      weatherCopter.SplashStore(cmdString.substring(1).toInt());
-    }
-
-    if(cmd == 'L')
-    {
-      weatherCopter.ListStores();
-    }
-
-    if(cmd == 'E')
-    {
-      weatherCopter.EraseStore(cmdString.substring(1).toInt());
-      weatherCopter.ListStores();
-    }
-    
-    if(cmd == 'C')
-    {
-      weatherCopter.CloseStore(cmdString.substring(1).toInt());
-      weatherCopter.ListStores();
-    }
-
-    if(cmd == 'W')
-    {
-      weatherCopter.SaveStoreToSD(cmdString.substring(1).toInt());
-      weatherCopter.ListStores();
-    }
-
-    if(cmd == 'R') //refresh
-    {
-      weatherCopter.ListStores(true);
-    }
-}
-
-  else if(cmd == 'C')
-  {
-    mode = CMD_MODE;
-    SerialUSB.println("Entering command mode");
-    //weatherCopter.CloseSDBlockFile();
+    default:
+      SerialUSB.println("Oops! Unhandled mode!");
   }
 
   return mode;
