@@ -10,6 +10,7 @@
 
 #include <weather_copter.h>
 #include "comm.h"
+#include <event_timer.h>
 
 enum MODE {IDLE, READING, CALIBRATION_MODE, CMD_MODE, TRISONICA_MODE, FILE_MODE};
 
@@ -51,6 +52,7 @@ LSM9DS1 imu;
 
 WeatherCopter weatherCopter;
 
+Timer reportTimer;
 //char filename[16]; //12 characters max
 
 void setup() 
@@ -112,6 +114,8 @@ void setup()
   weatherCopter.ListStores(true);
 
   Report(F("Done."));
+
+  reportTimer.Start(1000);
 }
 
 int mode = CMD_MODE;
@@ -142,24 +146,30 @@ void loop()
   if(mode == READING)
   {
     uint8_t nmeaType = gps.CheckSerial();
-    if(nmeaType & GGA) //only need GGA for the weather copter
+    if(nmeaType & GGA) 
     {
+      weatherCopter.AddGPSAltDump(gps.GetReading(), altimeter280.GetReading());
+    } //only need GGA for the weather copter
+
+    if(reportTimer.CheckExpired())
+    {
+      reportTimer.Restart();
+      
       //send some basic data to the ground station
       Report(//altimeter3115.MakeShortDataString() + ',' 
                  altimeter280.MakeShortDataString() + ','
                   + trisonica.GetReading().MakeShortDataString());// + '\n');
-      weatherCopter.AddGPSAltDump(gps.GetReading(), altimeter280.GetReading());
     }
   
     if(trisonica.CheckSerial()) 
     {
       //trisonica keys a new wind record
-//      String dataStr =  gps.MakeDataString() + ',' 
-//                      + trisonica.GetReading().MakeDataString() + ','
-//                      + altimeter280.MakeDataString() + ','
-//                      + imu.CalcRPY().MakeDataString();// + '\n';
+      String dataStr =  gps.MakeDataString() + ',' 
+                      + trisonica.GetReading().MakeDataString() + ','
+                      + altimeter280.MakeDataString() + ','
+                      + imu.CalcRPY().MakeDataString();// + '\n';
 
-//      SerialUSB.println(dataStr);
+      SerialUSB.println(dataStr);
       //weatherCopter.WriteSDBlock(dataStr);
       weatherCopter.AddWindAndIMUDump(trisonica.GetReading(), imu.CalcRPY());
     }
